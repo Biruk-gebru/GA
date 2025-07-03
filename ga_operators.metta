@@ -1,10 +1,6 @@
-;; Idiomatic MeTTa: GA Operators
-;; NOTE: The 'size' helper is now a wrapper for the stdlib 'size-atom'.
-;; NOTE: The 'map' helper is removed; use stdlib 'map-atom'.
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helper: selectByIndex
-(: selectByIndex (-> Expression Number Atom))
+; (: selectByIndex (-> Expression Number Atom))
 (= (selectByIndex $expr $index)
     (if (== $index 0)
         (car-atom $expr)
@@ -114,7 +110,8 @@
     (if (== $ind ())
         (reverse $acc)
         (let* (
-            ($gene (car-atom $ind))
+            (($head $tail) (decons-atom $ind))
+            ($gene $head)
             ($r1 (random-float &rng 0 1))
             ($mutated
                 (if (< $r1 $mutation-rate)
@@ -131,7 +128,7 @@
                 )
             )
         )
-            (polynomial-mutation-helper (cdr-atom $ind) $eta $mutation-rate (cons-atom $mutated $acc))
+            (polynomial-mutation-helper $tail $eta $mutation-rate (cons-atom $mutated $acc))
         )
     )
 )
@@ -149,12 +146,7 @@
 ;; This version uses superpose to enumerate all possible selections.
 ;; It is useful for symbolic or exhaustive search, but not needed for standard probabilistic selection.
 ;;
-;; (: roulette-superpose (-> Expression Expression Atom))
-;; (= (roulette-superpose $population $fitnesses)
-;;     (superpose
-;;         (roulette-helper $population $fitnesses (random-float &rng 0 (sum $fitnesses)) 0 0)
-;;     )
-;; )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -168,16 +160,10 @@
         (roulette-helper $population $fitnesses $r 0 0)
     )
 )
-(: roulette-helper (-> Expression Expression Number Number Number Atom))
-(= (roulette-helper $pop $fits $r $i $acc)
-    (if (>= (+ $acc (selectByIndex $fits $i)) $r)
-        (selectByIndex $pop $i)
-        (roulette-helper $pop $fits $r (+ $i 1) (+ $acc (selectByIndex $fits $i)))
-    )
-)
+
 
 ;; Helper: sum of a tuple
-(: sum (-> Expression Number))
+; (: sum (-> Expression Number))
 (= (sum $xs)
     (if (== $xs ()) 0 (+ (car-atom $xs) (sum (cdr-atom $xs)))))
 
@@ -191,19 +177,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Suppose:
-(bind! pop ((0.1 0.2 0.3) (0.4 0.5 0.6) (0.7 0.8 0.9)))
-(bind! fits (0.5 0.7 0.2))
-
-; ;; Tournament selection (k=2):
-
-; ;; Uniform crossover:
-; !(uniform-crossover (0.1 0.2 0.3) (0.4 0.5 0.6))
-
-; ;; Polynomial mutation (eta=20, mutation-rate=0.1):
-; !(polynomial-mutation (0.1 0.2 0.3) 20 0.1)
-
-; ;; Roulette-wheel selection:
-; !(roulette-wheel-selection pop fits)
+; (bind! pop ((0.1 0.2 0.3) (0.4 0.5 0.6) (0.7 0.8 0.9)))
+; (bind! fits (0.5 0.7 0.2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main GA Loop
@@ -241,10 +216,10 @@
    (if (> $n 0) (cons-atom (- $n 1) (range (- $n 1))) ()))
 
 ;; Main GA function
-(: genetic-algorithm (-> (-> Expression Expression Number Atom) 
-                         (-> Expression Expression (Expression Expression)) 
-                         (-> Expression Number Number Expression)
-                         Number Number Number Number Number ()))
+; (: genetic-algorithm (-> (-> Expression Expression Number Atom) 
+;                          (-> Expression Expression (Expression Expression)) 
+;                          (-> Expression Number Number Expression)
+;                          Number Number Number Number Number ()))
 (= (genetic-algorithm $sel-fn $cross-fn $mut-fn $pop-size $num-genes $num-gen $k $eta $mut-rate)
    (let* (
         ($pop (init-population $pop-size $num-genes))
@@ -255,11 +230,11 @@
 )
 
 ;; Revised ga-helper without 'do'
-(: ga-helper (-> (-> Expression Expression Number Atom) 
-                 (-> Expression Expression (Expression Expression)) 
-                 (-> Expression Number Number Expression)
-                 Expression Number Number Number Number Number Number Number
-                 ()))
+; (: ga-helper (-> (-> Expression Expression Number Atom) 
+;                  (-> Expression Expression (Expression Expression)) 
+;                  (-> Expression Number Number Expression)
+;                  Expression Number Number Number Number Number Number Number
+;                  ()))
 (= (ga-helper $sel-fn $cross-fn $mut-fn $pop $pop-size $num-genes $num-gen $k $eta $mut-rate $gen)
    (if (== $gen $num-gen)
       (let* (
@@ -281,12 +256,12 @@
       )
    )
 )
-
+; !(genetic-algorithm tournament-selection uniform-crossover polynomial-mutation 3 3 2 2 20 0.1)
 ;; Create offspring population
 (: make-offspring (-> (-> Expression Expression Number Atom) 
                       (-> Expression Expression (Expression Expression)) 
                       (-> Expression Number Number Expression)
-                      Expression Expression Number Number Number Number Expression 
+                      Expression Expression Number Number Number Expression 
                       Expression))
 (= (make-offspring $sel-fn $cross-fn $mut-fn $pop $fits $remaining $k $eta $mut-rate $acc)
    (if (== $remaining 0)
@@ -318,7 +293,6 @@
 ;; Print messages and run GA
 (= (run-ga $sel-fn)
    (let* (
-        ; ($_ (println! ($message)))
         ($result (genetic-algorithm $sel-fn uniform-crossover polynomial-mutation 100 3 20 2 20 0.1))
     )
     ()
@@ -328,9 +302,9 @@
 
 ; !(tournament-selection ((0.1 0.2 0.3) (0.4 0.5 0.6) (0.7 0.8 0.9)) (0.5 0.7 0.2) 2)
 !====1====
-!(uniform-crossover (0.1 0.2 0.3) (0.4 0.5 0.6))
+; !(uniform-crossover (0.1 0.2 0.3) (0.4 0.5 0.6))
 !====2==
-!(polynomial-mutation (0.1 0.2 0.3) 20 0.1)
+; !(polynomial-mutation (0.1 0.2 0.3) 20 0.1)
 
 ! =======
 ;; Execute both configurations
@@ -347,3 +321,39 @@
 ;; fitnesses = (0.5 0.7 0.2)
 ;; k = 2
 ; !(tournament-selection ((0.1 0.2 0.3) (0.4 0.5 0.6) (0.7 0.8 0.9)) (0.5 0.7 0.2) 2)
+
+; (: roulette-superpose (-> Expression Expression Atom))
+(= (roulette-superpose $population $fitnesses)
+    (let* (
+        (() (println! ("Population:" $population)))
+        (() (println! ("Fitnesses:" $fitnesses)))
+        ($total (sum $fitnesses))
+        (() (println! ("Total fitness:" $total)))
+        ($r (random-float &rng 0 $total))
+        (() (println! ("Random threshold:" $r)))
+        ($_ (println! ("Superpose random threshold:" $r)))
+    )
+        (roulette-helper $population $fitnesses $r 0 0)
+    )
+)
+
+; (: roulette-helper (-> Expression Expression Number Number Number Atom))
+(= (roulette-helper $pop $fits $r $i $acc)
+    (let* (
+        (() (println! ("pop:" $pop)))
+        ($fit (selectByIndex $fits $i))
+        (() (println! ("fit:" $fit)))
+        (() (println! ("acc:" $acc)))
+        (() (println! ("r:" $r)))
+        (() (println! ("i:" $i)))
+        (() (println! ("new-acc:" $new-acc)))
+        ($new-acc (+ $acc $fit))
+    )
+        (if (>= $new-acc $r)
+            (selectByIndex $pop $i)
+            (roulette-helper $pop $fits $r (+ $i 1) $new-acc)
+        )
+    )
+)
+
+!(roulette-superpose ((A) (B)) (0 2))
